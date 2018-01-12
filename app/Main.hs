@@ -7,12 +7,27 @@ import Control.Monad.Writer
 import Control.Monad.Reader
 import Control.Monad.State
 
+import Debug.Trace (trace)
+
 main :: IO ()
-main = putStrLn "Hi"
+main = do
+  print $ Prog [] example
+  putStrLn "-- becomes --"
+  print . convertProg $ Prog [] example
+  where
+    -- f = lambda x: lambda y: x + y
+    -- plus1 = f(1)
+    -- plus2 = f(2)
+    -- plus1(3) + plus2(3)
+    example =
+      Let "f" (Lambda ["x"] (Lambda ["y"] (Plus (Ref "x") (Ref "y")))) $
+        Let "plus1" (Call (Ref "f") [Num 1]) $
+          Let "plus2" (Call (Ref "f") [Num 2]) $
+            Plus (Call (Ref "plus1") [Num 3]) (Call (Ref "plus2") [Num 3])
 
-data Prog = Prog [Def] Expr
+data Prog = Prog [Def] Expr deriving (Eq, Show)
 
-data Def = Def String [String] Expr
+data Def = Def String [String] Expr deriving (Eq, Show)
 
 data Expr = Num Int
           | Plus Expr Expr
@@ -41,7 +56,7 @@ free (ClosFunc clos) = free clos
 
 
 convertProg :: Prog -> Prog
-convertProg (Prog origDefs body) = Prog (origDefs ++ newDefs) newBody
+convertProg (Prog origDefs body) = Prog (origDefs ++ reverse newDefs) newBody
   where
     globals = Set.fromList . map (\(Def name _ _) -> name) $ origDefs
     (newBody, newDefs) = runWriter . flip runReaderT globals . flip evalStateT (0, 0) . convert $ body
@@ -65,7 +80,7 @@ convert (Lambda args body) = do
   let freeVars = free body `Set.difference` Set.fromList args
   name <- freshFunc
   body' <- convert body
-  tell [Def name ("_env" : args) (subst (free body') (Ref "_env") body')]
+  tell [Def name ("_env" : args) (subst freeVars (Ref "_env") body')]
   closName <- freshClos
   let setEnv name = SetEnv name (Ref closName) (Ref name)
   let envBindings = foldr setEnv (Ref closName) (Set.toList freeVars)
