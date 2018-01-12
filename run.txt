@@ -21,6 +21,13 @@ Prog
 
 -- In Pythonish --
 
+f = lambda x: lambda y: x + y
+plus1 = f(1)
+plus2 = f(2)
+plus1(3) + plus2(3)
+
+-- becomes --
+
 def _f0(_env, x):
   _c0 = (_f1, dict())
   _c0[1]['x'] = x
