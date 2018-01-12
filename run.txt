@@ -1,0 +1,36 @@
+Prog [] $
+  Let "f" (Lambda ["x"] (Lambda ["y"] (Plus (Ref "x") (Ref "y")))) $
+    Let "plus1" (Call (Ref "f") [Num 1]) $
+      Let "plus2" (Call (Ref "f") [Num 2]) $
+        Plus (Call (Ref "plus1") [Num 3]) (Call (Ref "plus2") [Num 3])
+
+-- becomes --
+
+Prog
+  [ Def "_f0" ["_env", "x"] $
+      Let "_c0" (NewClos "_f1") $
+        SetEnv "x" (Ref "_c0") (Ref "x") $
+          Ref "_c0"
+  , Def "_f1" ["_env", "y"] $
+      Plus (GetEnv "x" (Ref "_env")) (Ref "y")
+  ] $
+  Let "f" (Let "_c1" (NewClos "_f0") (Ref "_c1")) $
+    Let "plus1" (Call (ClosFunc (Ref "f")) [Ref "f",Num 1]) $
+      Let "plus2" (Call (ClosFunc (Ref "f")) [Ref "f",Num 2]) $
+        Plus (Call (ClosFunc (Ref "plus1")) [Ref "plus1", Num 3]) (Call (ClosFunc (Ref "plus2")) [Ref "plus2", Num 3])
+
+-- In Pythonish --
+
+def _f0(_env, x):
+  _c0 = (_f1, dict())
+  _c0[1]['x'] = x
+  return _c0
+
+def _f1(_env, y):
+  return _env[1]['x'] + y
+
+_c1 = (_f0, dict())
+f = _c1
+plus1 = f[0](f, 1)
+plus2 = f[0](f, 2)
+plus1[0](plus1, 3) + plus2[0](plus2, 3)
