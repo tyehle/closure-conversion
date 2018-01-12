@@ -35,6 +35,8 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - closure-conversion
+    - containers
+    - mtl
 
 tests:
   closure-conversion-test:
